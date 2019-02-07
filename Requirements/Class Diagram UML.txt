@@ -1,39 +1,60 @@
 @startuml
+Database --* "made of" Request
+User --> "Contacts" Representative
+Representative -->"Creates"  Request
+CustomerSupport --> "Updates" Database
+Company -- "Employs" CustomerSupport
+Company -- "Employs" Representative
+
 class Database{
-  users: User[]
-  requests: Request[]
+  -users: User[]
+  -requests: Request[]
 
   getRequestStatus()
   login()
 }
 
-class Request{
-  ID : Int
-  Date : Date
-  Username : String
-  Amount : Int
-  Payment Type : String
-  Representative Name : String
-  Course : String
-  Receipt No. : Int
-  Status : Date
-}
 
+class User {
+  -ID : Int
+  -Username : String
+  +First Name: String
+  +Last Name: String
+  + email : String
+
+}
 class Representative {
-  ID : Int
-  Username : String
-  First Name: String
-  Last Name: String
-  Password: String
-  Last Log In : Date
+  -ID : Int
+  -Username : String
+  +First Name: String
+  +Last Name: String
+  -Password: String
+  -Last Log In : Date
 
   createRequest()
 }
+class Request{
+  -ID : Int
+  -Date : Date
+  -Username : String
+  -Amount : Int
+  -Payment Type : String
+  -Representative Name : String
+  -Course : String
+  -Receipt No. : Int
+  -Status : Date
+}
+class CustomerSupport {
+  +Working Hours : String
 
-class User {
-  ID : Int
-  Username : String
-  First Name: String
-  Last Name: String
+  receiveRequest()
+  updateRequest()
+}
+
+class Company {
+  +name : String
+  + address : String
+  + contact Information : String
+  + Users : User[]
 }
 @enduml
