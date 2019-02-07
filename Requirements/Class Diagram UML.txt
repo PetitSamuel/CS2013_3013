@@ -1,0 +1,39 @@
+@startuml
+class Database{
+  users: User[]
+  requests: Request[]
+
+  getRequestStatus()
+  login()
+}
+
+class Request{
+  ID : Int
+  Date : Date
+  Username : String
+  Amount : Int
+  Payment Type : String
+  Representative Name : String
+  Course : String
+  Receipt No. : Int
+  Status : Date
+}
+
+class Representative {
+  ID : Int
+  Username : String
+  First Name: String
+  Last Name: String
+  Password: String
+  Last Log In : Date
+
+  createRequest()
+}
+
+class User {
+  ID : Int
+  Username : String
+  First Name: String
+  Last Name: String
+}
+@enduml
