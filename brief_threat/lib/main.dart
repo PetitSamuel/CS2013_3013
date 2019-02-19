@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'FormScreen.dart';
+import 'RequestAccess.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -84,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                                   new Text("  Signing-In...")
                                 ],
                               ),
-                              ));
+                          ));
                         _loginPressed();
 
 
@@ -104,6 +105,22 @@ class _LoginPageState extends State<LoginPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => FormScreen()),
+                        );
+
+                      },
+                    )
+                  ],
+                ),
+                SizedBox(height: 150.0), //spacer
+                ButtonBar(
+                  children: <Widget>[
+                    FlatButton(
+                      child: Text('Request Access'),
+                      onPressed: () async {
+                        // redirect to new page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => RequestAccess()),
                         );
 
                       },
