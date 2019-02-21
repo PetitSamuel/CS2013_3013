@@ -1,7 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'RefreshToken.dart';
-import 'globals.dart' as globals;
 
 class Requests {
   static Future<RefreshToken> login(String _username, String _password) async {
@@ -16,7 +15,7 @@ class Requests {
       return RefreshToken.fromJson(jsonDecode(response.body));
     } 
     else {
-      // If that response was not OK, authentification failed
+      // authentification failed
       return null;
     }
   } 

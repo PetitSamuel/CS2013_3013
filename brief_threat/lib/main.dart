@@ -1,4 +1,3 @@
-import 'globals.dart' as globals;
 import 'package:flutter/material.dart';
 import 'FormScreen.dart';
 import 'jwtProcessor.dart';
@@ -7,25 +6,13 @@ import 'RefreshToken.dart';
 import 'Verification.dart';
 import 'Requests.dart';
 import 'dart:async';
+
+
 void main() {
   runApp(MaterialApp(
-      title: 'Form app',
-      home: LoginPage(),
-    ));
-    /*
-  if (globals.isLoggedIn) {
-    // TODO verify validity of refresh token
-    runApp(MaterialApp(
-      title: 'Form app',  // someone please suggest something :)
-      home: FormScreen(),
+    title: 'Form app',
+    home: LoginPage(),
   ));
-  } else {
-    runApp(MaterialApp(
-      title: 'Form app',
-      home: LoginPage(),
-    ));
-  }
-  */
 }
 
 class LoginPage extends StatefulWidget {
@@ -34,6 +21,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+
   // text input controllers & variables
   final TextEditingController _userNameController = new TextEditingController();
   final TextEditingController _passwordController = new TextEditingController();
@@ -145,15 +133,14 @@ class _LoginPageState extends State<LoginPage> {
   // handle login, currently just prints what was entered in the text fields
   Future<bool> _loginPressed (String user, String password, GlobalKey<ScaffoldState> key) async {
     print('The user wants to login with $_user and $_password');
+
     RefreshToken token = await Requests.login(_user, _password);
     if (token == null) {
       // show error message
       SnackBarController.showSnackBarErrorMessage(key, "Incorrect username or password. Please try again");
       return false;
     } else {
-      // successful login 
-      globals.isLoggedIn = true;
-      globals.refreshToken = token.refreshToken;
+      // successful login, set token in preferences 
       key.currentState.hideCurrentSnackBar();
       TokenParser.validateToken(token.refreshToken);
       return true;
