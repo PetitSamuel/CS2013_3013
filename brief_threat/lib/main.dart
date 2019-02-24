@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'FormScreen.dart';
 import 'Tokens/TokenProcessor.dart';
 import 'SnackBarController.dart';
-import 'Tokens/models/RefreshToken.dart';
 import 'Verification.dart';
 import 'Requests.dart';
 import 'dart:async';
-import 'Tokens/models/AccessToken.dart';
+import 'Tokens/models/Tokens.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -133,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
   // handle login, currently just prints what was entered in the text fields
   Future<bool> _loginPressed (String user, String password, GlobalKey<ScaffoldState> key) async {
     print('The user wants to login with $_user and $_password');
-    RefreshToken token = await Requests.login(_user, _password);
+    Tokens token = await Requests.login(_user, _password);
     if (token == null) {
       // show error message
       SnackBarController.showSnackBarErrorMessage(key, "Incorrect username or password. Please try again");
