@@ -5,27 +5,27 @@ import 'Tokens/models/RefreshToken.dart';
 import 'Verification.dart';
 import 'Requests.dart';
 import 'dart:async';
-import 'RequestAccess.dart';
+import 'PasswordScreen.dart';
 import 'globals.dart' as globals;
 
 void main() {
   runApp(MaterialApp(
       title: 'Form app',
-      home: LoginPage(),
+      home: LoginScreen(),
       routes: <String, WidgetBuilder> {
-        '/Login': (BuildContext context) => new LoginPage(),
+        '/Login': (BuildContext context) => new LoginScreen(),
         '/Form' : (BuildContext context) => new FormScreen(),
-        '/RequestAccess' : (BuildContext context) => new RequestAccess(),
+        '/Password' : (BuildContext context) => new PasswordScreen(),
       },
     ));
 }
 
-class LoginPage extends StatefulWidget {
+class LoginScreen extends StatefulWidget {
   @override
-  _LoginPageState createState() => _LoginPageState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginScreenState extends State<LoginScreen> {
   // text input controllers & variables
   final TextEditingController _userNameController = new TextEditingController();
   final TextEditingController _passwordController = new TextEditingController();
@@ -128,10 +128,10 @@ class _LoginPageState extends State<LoginPage> {
                 ButtonBar(
                   children: <Widget>[
                     FlatButton(
-                      child: Text('Request Access'),
+                      child: Text('Forgot your password?'),
                       onPressed: () async {
                         // redirect to new page
-                        Navigator.pushNamed(context, '/RequestAccess');
+                        Navigator.pushNamed(context, '/Password');
                       },
                     )
                   ],

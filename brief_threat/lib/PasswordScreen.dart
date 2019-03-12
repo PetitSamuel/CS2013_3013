@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class RequestAccess extends StatefulWidget {
+class PasswordScreen extends StatefulWidget {
   @override
-  State createState() => _RequestAccess();
+  State createState() => _PasswordScreen();
 }
 
-class _RequestAccess extends State <RequestAccess> {
+class _PasswordScreen extends State <PasswordScreen> {
 // text input controllers & variables
   final TextEditingController _userNameController = new TextEditingController();
   String _user = "";
@@ -23,7 +23,7 @@ class _RequestAccess extends State <RequestAccess> {
                 Column(
                   children: <Widget>[
                     SizedBox(height: 40.0),
-                    Text('Request Access:',
+                    Text('Reset Your Password',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
                     ),
@@ -45,6 +45,7 @@ class _RequestAccess extends State <RequestAccess> {
                       child: Text('Submit'),
                       onPressed: () async {
                         _user =_userNameController.text;
+                        // handle backend call here
                         print("sent request to access : $_user");
                       },
                     )
