@@ -2,6 +2,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'Tokens/models/RefreshToken.dart';
 import 'Tokens/models/AccessToken.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'Tokens/TokenProcessor.dart';
 
 class Requests {
   static Future<RefreshToken> login(String _username, String _password) async {
@@ -21,20 +23,34 @@ class Requests {
     return null;
   }
 
+    // returns true if user is an admin
+  static Future<Map<String, dynamic>> getUser(SharedPreferences prefs) async {
+    String accessToken = prefs.getString('access');
+    accessToken = await TokenParser.checkTokens(accessToken, prefs.getString('refresh'), prefs);
+    if (accessToken == null) return null;
+
+    final response = await http.get(
+      'https://briefthreat.nul.ie/api/v1/auth/login', 
+      headers: {"Authorization": "Bearer $accessToken"});
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } 
+    // request failed
+    return null;
+  }
+
   // returns true if user is an admin
   static Future<bool> isUserAdmin(String accessToken) async {
     final response = await http.get(
       'https://briefthreat.nul.ie/api/v1/auth/login', 
       headers: {"Authorization": "Bearer $accessToken"});
 
-    if (response.statusCode == 200) {
-      Map<String, dynamic> json =jsonDecode(response.body);
-      // success, return access token from JSON
-      return json['is_admin'];
-    } 
-
-    // request failed
-    return false;
+    Map<String, dynamic> json = jsonDecode(response.body);
+    if (json == null) {
+      return false;
+    }
+    return json['is_admin'];
   }
 
   static Future<AccessToken> generateAccessToken(String refreshToken) async {

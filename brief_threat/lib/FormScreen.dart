@@ -26,7 +26,7 @@ class _FormScreen extends State<FormScreen> {
   final SharedPreferences prefs;
   final bool isAdmin;
   _FormScreen(this.prefs, this.isAdmin);  //constructor
-
+  Widget submittedForms;
   String _user = "";
   String _repName = "";
   String _course = "";
@@ -68,148 +68,206 @@ class _FormScreen extends State<FormScreen> {
     if (this.isAdmin) {
       options.add(const barButtonOptions(title: 'Add new user', icon: null));
     }
+    submittedForms = FutureBuilder(
+      future: Requests.getUser(prefs),
+      builder: (BuildContext context, AsyncSnapshot snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          if(snapshot.data == null) {
+            print("error : null");
+            return ListView();
+          }
+            print("gotta build with the data");
+            //List<List<dynamic>> l = snapshot.data['forms'];
+            print(snapshot.data['forms'][0].toString());
+            return ListView();
+        } else {
+          return CircularProgressIndicator();
+        }
+      }
+    );
   }
 
+  void updateAccessToken () async {
+    accessToken = await TokenParser.checkTokens(accessToken, refreshToken, this.prefs);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return new WillPopScope(
+    return WillPopScope(
       onWillPop: () => Future.value(false),
-      child: Scaffold(
-        key: _formKey,
-        appBar: AppBar(
-          title: Text('Transaction Details'),
-          automaticallyImplyLeading: false,
-          actions: <Widget>[
-            PopupMenuButton<barButtonOptions>(
-              onSelected: _select,
-              itemBuilder: (BuildContext context) {
-                return options.map((barButtonOptions options) {
-                  return PopupMenuItem<barButtonOptions>(
-                    value: options,
-                    child: Text(options.title),
-                  );
-                }).toList();
-              },
-            ),
+      child: PageView(
+        children: <Widget>[
+          form(context),
+          submissions(context)
           ],
-        ),
-        body: SafeArea(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              children: <Widget>[
-                SizedBox(height: 12.0),
-                Column(
-                  children: <Widget>[
-                    SizedBox(height: 30.0),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: "Rep Name",
-                        filled: true,
+      ),
+    );
+  }
+
+  
+  Widget form(BuildContext context) {
+    return Scaffold(
+      key: _formKey,
+      appBar: AppBar(
+        title: Text('Transaction Details'),
+        automaticallyImplyLeading: false,
+        actions: <Widget>[
+          PopupMenuButton<barButtonOptions>(
+            onSelected: _select,
+            itemBuilder: (BuildContext context) {
+              return options.map((barButtonOptions options) {
+                return PopupMenuItem<barButtonOptions>(
+                  value: options,
+                  child: Text(options.title),
+                );
+              }).toList();
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.symmetric(horizontal: 24.0),
+            children: <Widget>[
+              SizedBox(height: 12.0),
+              Column(
+                children: <Widget>[
+                  SizedBox(height: 30.0),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: "Rep Name",
+                      filled: true,
+                    ),
+                    controller: _repNameController,
+                  ),
+                  SizedBox(height: 12.0),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: "Customer Username",
+                      filled: true,
+                    ),
+                    controller: _userNameController,
+                  ),
+                  SizedBox(height: 12.0),       
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: "Course",
+                      filled: true,
+                    ),
+                    controller: _courseController,
+                  ),
+                  SizedBox(height: 12.0),
+                  DateTimePickerFormField(
+                    inputType: inputType,
+                    format: formats[inputType],
+                    editable: false,
+                    controller: _dateController,
+                    decoration: InputDecoration(
+                      labelText: 'Date/Time', hasFloatingPlaceholder: false),
+                      onChanged: (dt) => setState(() => _date = dt),
+                  ),
+                  SizedBox(height: 12.0),
+                  Text("Payment Method: "),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      new Radio(
+                        value: false,
+                        groupValue: _radioValue,
+                        onChanged: _handleRadioChange,
                       ),
-                      controller: _repNameController,
-                    ),
-                    SizedBox(height: 12.0),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: "Customer Username",
-                        filled: true,
+                      new Text(
+                        'Cash',
+                        style: new TextStyle(fontSize: 16.0),
                       ),
-                      controller: _userNameController,
-                    ),
-                    SizedBox(height: 12.0),       
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: "Course",
-                        filled: true,
+                      new Radio(
+                        value: true,
+                        groupValue: _radioValue,
+                        onChanged: _handleRadioChange,
                       ),
-                      controller: _courseController,
-                    ),
-                    SizedBox(height: 12.0),
-                    DateTimePickerFormField(
-                      inputType: inputType,
-                      format: formats[inputType],
-                      editable: false,
-                      controller: _dateController,
-                      decoration: InputDecoration(
-                        labelText: 'Date/Time', hasFloatingPlaceholder: false),
-                        onChanged: (dt) => setState(() => _date = dt),
-                    ),
-                    SizedBox(height: 12.0),
-                    Text("Payment Method: "),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        new Radio(
-                          value: false,
-                          groupValue: _radioValue,
-                          onChanged: _handleRadioChange,
+                      new Text(
+                        'Cheque',
+                        style: new TextStyle(
+                          fontSize: 16.0,
                         ),
-                        new Text(
-                          'Cash',
-                          style: new TextStyle(fontSize: 16.0),
-                        ),
-                        new Radio(
-                          value: true,
-                          groupValue: _radioValue,
-                          onChanged: _handleRadioChange,
-                        ),
-                        new Text(
-                          'Cheque',
-                          style: new TextStyle(
-                            fontSize: 16.0,
-                          ),
-                        ),
-                      ]
-                    ),
-                    SizedBox(height: 12.0),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: "Amount",
-                        filled: true,
-                        prefixText: '€',
                       ),
-                      controller: _amountController,
+                    ]
+                  ),
+                  SizedBox(height: 12.0),
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Amount",
+                      filled: true,
+                      prefixText: '€',
                     ),
-                    SizedBox(height: 12.0),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: "Receipt No",
-                        filled: true,
-                      ),
-                      controller: _receiptController,
+                    controller: _amountController,
+                  ),
+                  SizedBox(height: 12.0),
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Receipt No",
+                      filled: true,
                     ),
-                    ButtonBar(
-                      children: <Widget>[
-                        FlatButton(
-                          child: Text('SUBMIT'),
-                          onPressed: () async {
-                            _user =_userNameController.text.trim();
-                            _repName =_repNameController.text.trim();
-                            _course =_courseController.text.trim();
-                            _amount =_amountController.text.trim();
-                            _receipt =_receiptController.text.trim();
-                            double _amountValue = Verification.checkForMoneyAmountInput(_amount);
-                            String printErrorMessage = Verification.validateFormSubmission(_user, _repName, _course, _amount, _amountValue, _receipt, _date);
-                            if (printErrorMessage != null) {
-                              SnackBarController.showSnackBarErrorMessage(_formKey, printErrorMessage);
-                              return;
-                            }
-                            handleSubmitForm(_user, _repName, _course, _amountValue, _receipt, _date, _currentPaymentMethod);
-                          },
-                        )
-                      ],
-                    )
-                  ],
-                ),
-              ],
-            )
-        )
+                    controller: _receiptController,
+                  ),
+                  ButtonBar(
+                    children: <Widget>[
+                      FlatButton(
+                        child: Text('SUBMIT'),
+                        onPressed: () async {
+                          _user =_userNameController.text.trim();
+                          _repName =_repNameController.text.trim();
+                          _course =_courseController.text.trim();
+                          _amount =_amountController.text.trim();
+                          _receipt =_receiptController.text.trim();
+                          double _amountValue = Verification.checkForMoneyAmountInput(_amount);
+                          String printErrorMessage = Verification.validateFormSubmission(_user, _repName, _course, _amount, _amountValue, _receipt, _date);
+                          if (printErrorMessage != null) {
+                            SnackBarController.showSnackBarErrorMessage(_formKey, printErrorMessage);
+                            return;
+                          }
+                          handleSubmitForm(_user, _repName, _course, _amountValue, _receipt, _date, _currentPaymentMethod);
+                        },
+                      )
+                    ],
+                  )
+                ],
+              ),
+            ],
+          )
       )
     );
   }
+
+  Widget submissions(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Past Submissions'),
+        automaticallyImplyLeading: false,
+        actions: <Widget>[
+          PopupMenuButton<barButtonOptions>(
+            onSelected: _select,
+            itemBuilder: (BuildContext context) {
+              return options.map((barButtonOptions options) {
+                return PopupMenuItem<barButtonOptions>(
+                  value: options,
+                  child: Text(options.title),
+                );
+              }).toList();
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: submittedForms,
+      )
+    );
+  }
+
+
+
   void _handleRadioChange(bool value) {
     setState(() {
       _radioValue = value;
@@ -234,7 +292,6 @@ class _FormScreen extends State<FormScreen> {
     // success, clear the fields & show message 
     _showDialog(requestId);
     _userNameController.clear();
-    _repNameController.clear();
     _courseController.clear();
     _amountController.clear();
     _receiptController.clear();
