@@ -27,8 +27,8 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   // text input controllers & variables
-  final TextEditingController _userNameController = new TextEditingController(text: "root");
-  final TextEditingController _passwordController = new TextEditingController(text: "r4bwbsuPNdSnxHLnb6IaFaAmbC3UdHHv5ZFC4mgT9mR");
+  final TextEditingController _userNameController = new TextEditingController();
+  final TextEditingController _passwordController = new TextEditingController();
   String _user = "";
   String _password = "";
   var hidePassword = true;
