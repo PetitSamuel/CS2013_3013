@@ -7,6 +7,10 @@ import 'Tokens/TokenProcessor.dart';
 import 'Requests.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Register.dart';
+import 'model/request.dart';
+import 'package:page_indicator/page_indicator.dart';
+import 'dart:async';
+
 
 class FormScreen extends StatefulWidget {
   final SharedPreferences prefs;
@@ -21,7 +25,7 @@ class _FormScreen extends State<FormScreen> {
  // list of choices on the side menu, add a line here to add another option
  final List<barButtonOptions> options = <barButtonOptions>[
    // we don't use the icons as of now
-  const barButtonOptions(title: 'Log Out', icon: null)
+  const barButtonOptions(title: 'Log Out', icon: null),
   ];
   final SharedPreferences prefs;
   final bool isAdmin;
@@ -50,7 +54,7 @@ class _FormScreen extends State<FormScreen> {
   bool _radioValue = false;
   //default value for the radio button
   String _currentPaymentMethod = "cash"; 
-  
+
   // controllers and variables for the inputs 
   final TextEditingController _userNameController = new TextEditingController();
   final TextEditingController _courseController = new TextEditingController();
@@ -58,8 +62,14 @@ class _FormScreen extends State<FormScreen> {
   final TextEditingController _receiptController = new TextEditingController();
   final TextEditingController _dateController = new TextEditingController();
   final TextEditingController _repNameController = new TextEditingController();
+
+  PageController pageControll = new PageController(
+    initialPage: 0,
+    keepPage: true,
+  );
   
   static final GlobalKey<ScaffoldState> _formKey = new GlobalKey<ScaffoldState>();
+  static final GlobalKey<ScaffoldState> _formsListKey = new GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -68,22 +78,62 @@ class _FormScreen extends State<FormScreen> {
     if (this.isAdmin) {
       options.add(const barButtonOptions(title: 'Add new user', icon: null));
     }
-    submittedForms = FutureBuilder(
-      future: Requests.getUser(prefs),
+    submittedForms = _buildFormScreen();
+  }
+  Widget _buildFormScreen() {
+    return new FutureBuilder(
+      future: Requests.getForms(prefs),
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           if(snapshot.data == null) {
-            print("error : null");
-            return ListView();
+            // no data to display 
+            return Scaffold(
+              body: Center(
+                child: Text('There is nothing to display right now.'),
+              ),
+              floatingActionButton: FloatingActionButton(
+                child: Icon(Icons.cached),
+                onPressed: setFormScreen,
+              ),
+              floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            );
           }
-            print("gotta build with the data");
-            //List<List<dynamic>> l = snapshot.data['forms'];
-            print(snapshot.data['forms'][0].toString());
-            return ListView();
+            return new RefreshIndicator(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemBuilder: (context, index) => _buildFormItem(snapshot.data[index], index),
+                itemCount: snapshot.data.length,
+              ),
+              onRefresh: _handleRefresh,
+            );
         } else {
-          return CircularProgressIndicator();
+          return Center(
+            child: CircularProgressIndicator()
+          );
         }
       }
+    );
+  }
+  Widget _buildFormItem(Request request, int index) {
+    var formatter = new DateFormat('dd-MM-yy');
+    String dateSubmitted =formatter.format(request.submittedTime);
+    String status =request.resolvedAt == null ? "Waiting for approval" : "Resolved on ${formatter.format(request.resolvedAt)}";
+    return new ListTile(
+      contentPadding: EdgeInsets.all(8.0),
+      leading: request.resolvedAt == null ? Icon(Icons.radio_button_unchecked) : Icon(Icons.radio_button_checked),
+      title: Text('Customer: ${request.customerName} - Submitted by ${request.submitter}'),
+      subtitle: new Text('Submitted on: $dateSubmitted\nPaid in ${request.paymentMethod}\nReceipt No: ${request.receipt}\nCourse: ${request.course}',
+        style: TextStyle(fontSize: 12.0),
+      ),
+      trailing: 
+        new Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            new Text('${request.amount}€'),
+          ],
+        ),
+      enabled: (prefs.getBool('is_admin') ?? false) && request.resolvedAt == null,
+      onTap: () => showValidateDialog(request.id),
     );
   }
 
@@ -95,12 +145,21 @@ class _FormScreen extends State<FormScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () => Future.value(false),
-      child: PageView(
+      child: PageIndicatorContainer(
+        pageView: PageView(
+        controller: pageControll,
         children: <Widget>[
           form(context),
           submissions(context)
           ],
-      ),
+        ),
+        align: IndicatorAlign.top,
+        length: 2,
+        indicatorSpace: 10.0,
+        padding: EdgeInsets.all(45),
+        indicatorColor: Colors.grey,
+        indicatorSelectorColor: Colors.blue[200],
+      )
     );
   }
 
@@ -129,7 +188,7 @@ class _FormScreen extends State<FormScreen> {
           child: ListView(
             padding: EdgeInsets.symmetric(horizontal: 24.0),
             children: <Widget>[
-              SizedBox(height: 12.0),
+              SizedBox(height: 7.0),
               Column(
                 children: <Widget>[
                   SizedBox(height: 30.0),
@@ -243,6 +302,7 @@ class _FormScreen extends State<FormScreen> {
 
   Widget submissions(BuildContext context) {
     return Scaffold(
+      key: _formsListKey,
       appBar: AppBar(
         title: Text('Past Submissions'),
         automaticallyImplyLeading: false,
@@ -262,7 +322,7 @@ class _FormScreen extends State<FormScreen> {
       ),
       body: SafeArea(
         child: submittedForms,
-      )
+      ),
     );
   }
 
@@ -307,15 +367,39 @@ class _FormScreen extends State<FormScreen> {
       case "Add new user":
         Navigator.push(context, new MaterialPageRoute(builder: (context) => new Register(prefs:prefs)));
         break;
+      case "Refresh forms":
+        setFormScreen();
+        break;
       default:
         // shoudln't come here
     }
   }
 
+  void setFormScreen() {
+    setState(() {
+      submittedForms = _buildFormScreen();
+    });
+  }
+
+   Future<void> _handleRefresh() async {
+    List<Request> forms = await Requests.getForms(prefs);
+
+    submittedForms = new RefreshIndicator(
+      child: ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemBuilder: (context, index) => _buildFormItem(forms[index], index),
+      itemCount: forms.length,
+        ),
+        onRefresh: _handleRefresh,
+      );
+
+    return null;
+  }
+
   void _loadTokensAndRepName() async {
-    _repName = await (this.prefs.get('username') ?? '');
-    refreshToken = await (this.prefs.get('refresh') ?? '');
-    accessToken = await (this.prefs.get('access' ?? ''));
+    _repName = (this.prefs.getString('username') ?? '');
+    refreshToken = (this.prefs.getString('refresh') ?? '');
+    accessToken = (this.prefs.getString('access' ?? ''));
     setState(() {
       _repNameController.text =_repName;
     });
@@ -363,6 +447,39 @@ class _FormScreen extends State<FormScreen> {
         );
       },
     );
+  }
+
+    void showValidateDialog(int id) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        // return object of type Dialog
+        return AlertDialog(
+          title: new Text("Do you want to validate this request?"),
+          actions: <Widget>[
+            new FlatButton(
+              child: new Text("Validate"),
+              onPressed: () { 
+                Navigator.of(context).pop();
+                handleApproveRequest(id);
+              },
+            ),
+            new FlatButton(
+              child: new Text("Cancel"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void handleApproveRequest (int id) async {
+    bool status = await Requests.approveRequest(id, prefs);
+    SnackBarController.showSnackBarErrorMessage(_formsListKey, status ? "Successfully approved request #$id" : "An error occurred.");
+    setFormScreen();
   }
 
    void _showLogOutDialog() {
