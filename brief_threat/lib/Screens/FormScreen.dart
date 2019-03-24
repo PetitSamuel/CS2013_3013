@@ -416,23 +416,27 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
  Future<void> handleScrollUpToRefresh() async {
     List<Request> forms = await Requests.getForms(prefs);
     if (forms == null || forms.isEmpty) {
-      submittedForms = Scaffold(
-        body: Center(
-          child: FlatButton(
-            child: Text('There is nothing to display right now. Click to refresh'),
-            onPressed: handleScrollUpToRefresh,
-          ),
-        )
-      );
+      setState(() {
+        submittedForms = Scaffold(
+          body: Center(
+            child: FlatButton(
+              child: Text('There is nothing to display right now. Click to refresh'),
+              onPressed: handleScrollUpToRefresh,
+            ),
+          )
+        );
+      });
     } else {
-      submittedForms = new RefreshIndicator(
-        child: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemBuilder: (context, index) => buildSubmissionItem(forms[index], index),
-        itemCount: forms.length,
-          ),
-          onRefresh: handleScrollUpToRefresh,
-      );
+      setState(() {
+        submittedForms = new RefreshIndicator(
+          child: ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemBuilder: (context, index) => buildSubmissionItem(forms[index], index),
+          itemCount: forms.length,
+            ),
+            onRefresh: handleScrollUpToRefresh,
+        );
+      });
     }
 
     return null;
