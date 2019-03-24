@@ -22,6 +22,7 @@ class Request {
   }
 
   factory Request.fromJson(Map<String, dynamic> parsedJson){
-    return Request(parsedJson['amount'], parsedJson['course'], parsedJson['customer_name'], parsedJson['id'], parsedJson['payment_method'], parsedJson['resolved_at'], parsedJson['receipt'], parsedJson['submitter'], parsedJson['time']);
+    return Request(parsedJson['amount'], parsedJson['course'], parsedJson['customer_name'], parsedJson['id'],
+        parsedJson['payment_method'], parsedJson['resolved_at'], parsedJson['receipt'], parsedJson['submitter'], parsedJson['time']);
   }
 }

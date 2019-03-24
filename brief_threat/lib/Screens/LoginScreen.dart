@@ -31,7 +31,7 @@ class _LoginScreen extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _getPreferences();
+    initialiseFromLocalStorage();
   }
 
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
@@ -72,7 +72,7 @@ class _LoginScreen extends State<LoginScreen> {
                         top: 5,
                         child: IconButton(
                           onPressed: () {
-                            _toggleShowPassword();
+                            toggleShowPassword();
                           },
                           icon: new Icon(showOrHideIcon)
                         )
@@ -100,7 +100,7 @@ class _LoginScreen extends State<LoginScreen> {
 
                         String error = Verification.validateLoginSubmission(_user, _password);
                         if (error != null) {
-                          SnackBarController.showSnackBarErrorMessage(_scaffoldKey, error);
+                          SnackBarController.showSnackBarMessage(_scaffoldKey, error);
                           return;
                         }
 
@@ -116,7 +116,7 @@ class _LoginScreen extends State<LoginScreen> {
                             ),
                           )
                         );
-                        bool status = await _loginPressed(_user, _password, _scaffoldKey);
+                        bool status = await handleLoginUser(_user, _password, _scaffoldKey);
                         
                         // don't redirect if login failed
                         if(!status) {
@@ -144,7 +144,7 @@ class _LoginScreen extends State<LoginScreen> {
         localizedReason: 'Please authenticate to Login', useErrorDialogs: false);
   }
 
-  void _getPreferences() async {
+  void initialiseFromLocalStorage() async {
     prefs = await SharedPreferences.getInstance();
     if ((_user = prefs.getString('username') ?? '') != '') {
       setState(() {
@@ -163,7 +163,7 @@ class _LoginScreen extends State<LoginScreen> {
     }
   }
   // Toggles the password show status
-  void _toggleShowPassword() async {
+  void toggleShowPassword() async {
     setState(() {
       hidePassword = !hidePassword;
       if (hidePassword) {
@@ -175,11 +175,11 @@ class _LoginScreen extends State<LoginScreen> {
   }
 
   // handle login, currently just prints what was entered in the text fields
-  Future<bool> _loginPressed (String user, String password, GlobalKey<ScaffoldState> key) async {
+  Future<bool> handleLoginUser (String user, String password, GlobalKey<ScaffoldState> key) async {
     RefreshToken token = await Requests.login(_user, _password);
     if (token == null) {
       // show error message
-      SnackBarController.showSnackBarErrorMessage(key, "Incorrect username or password. Please try again");
+      SnackBarController.showSnackBarMessage(key, "Incorrect username or password. Please try again");
       return false;
     }
     await prefs.setString('username', user);

@@ -8,7 +8,7 @@ import 'package:brief_threat/Models/RefreshToken.dart';
 import 'package:brief_threat/Models/AccessToken.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brief_threat/Processors/TokenProcessor.dart';
-import 'package:brief_threat/Models/request.dart';
+import 'package:brief_threat/Models/Request.dart';
 
 class Requests {
 

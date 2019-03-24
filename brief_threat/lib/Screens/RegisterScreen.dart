@@ -4,6 +4,7 @@ import 'package:brief_threat/Processors/InputProcessor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brief_threat/Processors/HttpRequestsProcessor.dart';
 import 'package:brief_threat/Processors/TokenProcessor.dart';
+import 'package:brief_threat/Controllers/DialogController.dart';
 
 class Register extends StatefulWidget {
   final SharedPreferences prefs;
@@ -32,6 +33,7 @@ class _Register extends State <Register> {
   final TextEditingController _lastNameController = new TextEditingController();
   final TextEditingController _emailController = new TextEditingController();
   final TextEditingController _emailConfirmationController = new TextEditingController();
+
   bool isAdmin = false;
   String _user = "";
   String _firstName = "";
@@ -41,6 +43,7 @@ class _Register extends State <Register> {
 
   static final GlobalKey<ScaffoldState> _registerScaffold = new GlobalKey<ScaffoldState>();
 
+  // register screen fields widget
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -158,10 +161,10 @@ class _Register extends State <Register> {
                         setVariablesFromControllers();
                         String printErrorMessage = Verification.validateNewUserFields(_user, _firstName, _lastName, _email, _emailConfirmed);
                         if (printErrorMessage != null) {
-                          SnackBarController.showSnackBarErrorMessage(_registerScaffold, printErrorMessage);
+                          SnackBarController.showSnackBarMessage(_registerScaffold, printErrorMessage);
                           return;
                         }
-                        _createNewUser();
+                        handleCreatNewUser();
                       },
                     )
                   ],
@@ -174,23 +177,26 @@ class _Register extends State <Register> {
     );
   }
 
-  void _createNewUser () async {
+  void handleCreatNewUser () async {
     accessToken = await TokenProcessor.checkTokens(accessToken, refreshToken, prefs);
     if (accessToken == null) {
+      SnackBarController.showSnackBarMessage(_registerScaffold, "You are no longer logged in.");
       // no longer logged in, pop both screens back to login screen & remove prefs
       await this.prefs.remove('access');
       await this.prefs.remove('refresh');
       await this.prefs.remove('is_admin');
-      SnackBarController.showSnackBarErrorMessage(_registerScaffold, "You are no longer logged in.");
+      // pop both register and forms screens
       Navigator.pop(context);
       Navigator.pop(context);
       return;
     }
-    String status = await Requests.register(_user, _email, isAdmin, _firstName, _lastName, accessToken);
-    _showMessageDialog(status == null ? "Registration for user $_user was successful!" : "An error occured.", status == null ? '' : status);
 
+    // make call to the backend
+    String status = await Requests.register(_user, _email, isAdmin, _firstName, _lastName, accessToken);
+    showMessageDialog(status == null ? "Registration for user $_user was successful!" : "An error occured.", status == null ? '' : status, context);
+
+    // if registration was a success, clear fields
     if (status == null) {
-      // if registration was a success, clear fields
       setState(() {
        _firstNameController.clear();
        _lastNameController.clear();
@@ -202,26 +208,6 @@ class _Register extends State <Register> {
     }
   }
 
-  void _showMessageDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // return object of type Dialog
-        return AlertDialog(
-          title: new Text(title),
-          content: Text(message),
-          actions: <Widget>[
-            new FlatButton(
-              child: new Text("Close"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
   void _handleAdminChange(bool value) {
     setState(() {
       isAdmin = value;

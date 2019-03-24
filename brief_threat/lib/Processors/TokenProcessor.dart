@@ -4,7 +4,7 @@ import 'package:brief_threat/Models/AccessToken.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TokenProcessor {
-  // returns true if token is valid
+  // returns true if token is valid, false otherwise (verifies expiration time)
   static bool validateToken (String token) {
     if (token.isEmpty) return false;
     var decodedToken = new JWT.parse(token);

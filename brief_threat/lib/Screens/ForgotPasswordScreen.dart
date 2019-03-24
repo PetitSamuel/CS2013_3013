@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:brief_threat/Processors/HttpRequestsProcessor.dart';
-
+import 'package:brief_threat/Controllers/DialogController.dart';
 
 class ForgotPassword extends StatefulWidget {
   final String originalUsername;
@@ -51,7 +51,7 @@ class _ForgotPassword extends State <ForgotPassword> {
                       child: Text('Reset'),
                       onPressed: () async {
                         _user =_userNameController.text;
-                        _resetPassword();
+                        processResetPassword();
                       },
                     )
                   ],
@@ -62,33 +62,13 @@ class _ForgotPassword extends State <ForgotPassword> {
     );
   }
 
-  void _resetPassword () async {
+  // makes the call to the backend to reset a users password and returns to the login screen on success
+  void processResetPassword () async {
     String status = await Requests.resetPassword(_user);
     if (status == null) {
       // return to login screen on success
       Navigator.pop(context);
     }
-    status == null ? _showDialog("Success", "An email will be sent to you shortly.") : _showDialog("An error occured.", status);
-  }
-
-    void _showDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // return object of type Dialog
-        return AlertDialog(
-          title: new Text(title),
-          content: new Text(message),
-          actions: <Widget>[
-            new FlatButton(
-              child: new Text("Close"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
+    status == null ? showMessageDialog("Success", "An email will be sent to you shortly.", context) : showMessageDialog("An error occured.", status, context);
   }
 }

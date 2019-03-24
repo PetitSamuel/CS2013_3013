@@ -7,11 +7,12 @@ import 'package:brief_threat/Processors/TokenProcessor.dart';
 import 'package:brief_threat/Processors/HttpRequestsProcessor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brief_threat/Screens/RegisterScreen.dart';
-import 'package:brief_threat/Models/request.dart';
+import 'package:brief_threat/Models/Request.dart';
 import 'package:page_indicator/page_indicator.dart';
 import 'dart:async';
 import 'package:brief_threat/Theme/colors.dart' as colors;
 import 'package:local_auth/local_auth.dart';
+import 'package:brief_threat/Controllers/DialogController.dart';
 
 class FormScreen extends StatefulWidget {
   final SharedPreferences prefs;
@@ -66,7 +67,7 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
   final TextEditingController _dateController = new TextEditingController();
   final TextEditingController _repNameController = new TextEditingController();
 
-  PageController pageControll = new PageController(
+  PageController pageController = new PageController(
     initialPage: 0,
     keepPage: true,
   );
@@ -77,11 +78,12 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _loadTokensAndRepName();
+    loadTokensAndRepNameFromPreferences();
+    // add new registration functionality if user is admin
     if (this.isAdmin) {
       options.add(const barButtonOptions(title: 'Add new user', icon: null));
     }
-    submittedForms = _buildFormScreen();
+    submittedForms = buildSubmissionsListWidget();
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -98,7 +100,59 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
     }
   }
 
-  Widget _buildFormScreen() {
+  // build main screen, with a page view so the user can switch between screens
+ @override
+ Widget build(BuildContext context) {
+   return WillPopScope(
+       onWillPop: () => Future.value(false),
+       child: PageIndicatorContainer(
+         pageView: PageView(
+           controller: pageController,
+           children: <Widget>[
+             form(context),
+             submissions(context)
+           ],
+         ),
+         align: IndicatorAlign.bottom,
+         length: 2,
+         padding: EdgeInsets.only(bottom: 10, left: 15),
+         indicatorSpace: 10.0, // space between circles
+         indicatorColor: Colors.grey,
+         indicatorSelectorColor: Colors.blue[200],
+         size: 15.0, // indicator size.
+       )
+   );
+ }
+
+ // build submissions widget, contains all the forms a user submitted (all forms if admin)
+ Widget submissions(BuildContext context) {
+   return Scaffold(
+     key: _formsListKey,
+     appBar: AppBar(
+       title: Text('Past Submissions'),
+       automaticallyImplyLeading: false,
+       actions: <Widget>[
+         PopupMenuButton<barButtonOptions>(
+           onSelected: menuButtonHandler,
+           itemBuilder: (BuildContext context) {
+             return options.map((barButtonOptions options) {
+               return PopupMenuItem<barButtonOptions>(
+                 value: options,
+                 child: Text(options.title),
+               );
+             }).toList();
+           },
+         ),
+       ],
+     ),
+     body: SafeArea(
+       child: submittedForms,
+     ),
+   );
+ }
+ 
+  // build forms widget list view
+  Widget buildSubmissionsListWidget() {
     return new FutureBuilder(
       future: Requests.getForms(prefs),
       builder: (BuildContext context, AsyncSnapshot snapshot) {
@@ -119,10 +173,10 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
             return new RefreshIndicator(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
-                itemBuilder: (context, index) => _buildFormItem(snapshot.data[index], index),
+                itemBuilder: (context, index) => buildSubmissionItem(snapshot.data[index], index),
                 itemCount: snapshot.data.length,
               ),
-              onRefresh: _handleRefresh,
+              onRefresh: handleScrollUpToRefresh,
             );
         } else {
           return Center(
@@ -132,12 +186,15 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
       }
     );
   }
-  Widget _buildFormItem(Request request, int index) {
+  
+  // builds a single form item (list tile format)
+  Widget buildSubmissionItem(Request request, int index) {
     var formatter = new DateFormat('dd-MM-yy');
     String dateSubmitted =formatter.format(request.submittedTime);
     String status =request.resolvedAt == null ? "Waiting for approval" : "Resolved on ${formatter.format(request.resolvedAt)}";
     return new ListTile(
       contentPadding: EdgeInsets.all(8.0),
+      // icon to display : ticked radio button if form has been approved, otherwise unchecked
       leading: request.resolvedAt == null ? Icon(Icons.radio_button_unchecked) : Icon(Icons.radio_button_checked),
       title: Text('Customer: ${request.customerName} - Submitted by ${request.submitter}'),
       subtitle: new Text('Submitted on: $dateSubmitted\nPaid in ${request.paymentMethod}\nReceipt No: ${request.receipt}\nCourse: ${request.course}\n$status',
@@ -151,38 +208,11 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
           ],
         ),
       enabled: (prefs.getBool('is_admin') ?? false) && request.resolvedAt == null,
-      onTap: () => showValidateDialog(request.id),
+      onTap: () => adminValidateRequestDialog(request.id, context, handleApproveRequest),
     );
   }
-
-  void updateAccessToken () async {
-    accessToken = await TokenProcessor.checkTokens(accessToken, refreshToken, this.prefs);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () => Future.value(false),
-      child: PageIndicatorContainer(
-        pageView: PageView(
-        controller: pageControll,
-        children: <Widget>[
-          form(context),
-          submissions(context)
-          ],
-        ),
-        align: IndicatorAlign.bottom,
-        length: 2,
-        padding: EdgeInsets.only(bottom: 10, left: 15),
-        indicatorSpace: 10.0, // space between circles
-        indicatorColor: Colors.grey,
-        indicatorSelectorColor: Colors.blue[200],
-        size: 15.0, // indicator size.
-      )
-    );
-  }
-
   
+  // build form screen
   Widget form(BuildContext context) {
     return Scaffold(
       key: _formKey,
@@ -191,7 +221,7 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
         automaticallyImplyLeading: false,
         actions: <Widget>[
           PopupMenuButton<barButtonOptions>(
-            onSelected: _select,
+            onSelected: menuButtonHandler,
             itemBuilder: (BuildContext context) {
               return options.map((barButtonOptions options) {
                 return PopupMenuItem<barButtonOptions>(
@@ -252,7 +282,7 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
                       new Radio(
                         value: false,
                         groupValue: _radioValue,
-                        onChanged: _handleRadioChange,
+                        onChanged: handlePaymentMethodRadioButtonToggle,
                         activeColor: colors.buttonColor,
                       ),
                       new Text(
@@ -262,7 +292,7 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
                       new Radio(
                         value: true,
                         groupValue: _radioValue,
-                        onChanged: _handleRadioChange,
+                        onChanged: handlePaymentMethodRadioButtonToggle,
                         activeColor: colors.buttonColor,
                       ),
                       new Text(
@@ -306,10 +336,10 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
                           double _amountValue = Verification.checkForMoneyAmountInput(_amount);
                           String printErrorMessage = Verification.validateFormSubmission(_user, _repName, _course, _amount, _amountValue, _receipt, _date);
                           if (printErrorMessage != null) {
-                            SnackBarController.showSnackBarErrorMessage(_formKey, printErrorMessage);
+                            SnackBarController.showSnackBarMessage(_formKey, printErrorMessage);
                             return;
                           }
-                          handleSubmitForm(_user, _repName, _course, _amountValue, _receipt, _date, _currentPaymentMethod);
+                          handleFormSubmission(_user, _repName, _course, _amountValue, _receipt, _date, _currentPaymentMethod);
                         },
                       )
                     ],
@@ -322,42 +352,16 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget submissions(BuildContext context) {
-    return Scaffold(
-      key: _formsListKey,
-      appBar: AppBar(
-        title: Text('Past Submissions'),
-        automaticallyImplyLeading: false,
-        actions: <Widget>[
-          PopupMenuButton<barButtonOptions>(
-            onSelected: _select,
-            itemBuilder: (BuildContext context) {
-              return options.map((barButtonOptions options) {
-                return PopupMenuItem<barButtonOptions>(
-                  value: options,
-                  child: Text(options.title),
-                );
-              }).toList();
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: submittedForms,
-      ),
-    );
-  }
 
 
-
-  void _handleRadioChange(bool value) {
+  void handlePaymentMethodRadioButtonToggle(bool value) {
     setState(() {
       _radioValue = value;
       _currentPaymentMethod = (_radioValue ? "cheque" : "cash");
     });
   }
 
-  void handleSubmitForm(String user, String repName, String course, double amount, String receipt, DateTime date, String paymentMethod) async {
+  void handleFormSubmission(String user, String repName, String course, double amount, String receipt, DateTime date, String paymentMethod) async {
     if ((accessToken = await TokenProcessor.checkTokens(accessToken, refreshToken, this.prefs)) == null) {
       // an error occured with the tokens, means the user no longer has valid tokens 
       // redirect to login page
@@ -367,12 +371,12 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
 
     int requestId = await Requests.postForm(accessToken, user, repName, course, amount, receipt, date, paymentMethod);
     if (requestId == -1) {
-      SnackBarController.showSnackBarErrorMessage(_formKey, "An error occured. Please try again later.");
+      SnackBarController.showSnackBarMessage(_formKey, "An error occured. Please try again later.");
       return;
     } 
     
     // success, clear the fields & show message 
-    _showDialog(requestId);
+    showFormSuccessDialog(requestId, context);
     _userNameController.clear();
     _courseController.clear();
     _amountController.clear();
@@ -381,10 +385,11 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
     setState(() => _date = null);
   }
 
-  void _select(barButtonOptions options) {
+  // handles different button clicks from the menu button
+  void menuButtonHandler(barButtonOptions options) {
     switch (options.title) {
       case "Log Out":
-        _showLogOutDialog();
+        showLogOutConfirmationDialog(context, logoutUser);
         break;
       case "Add new user":
         Navigator.push(context, new MaterialPageRoute(builder: (context) => new Register(prefs:prefs)));
@@ -400,20 +405,22 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
     }
   }
 
+  // reload list of submissions (needed to reload from the "no submissions currently available screen")
   void setFormScreen() {
     setState(() {
-      submittedForms = _buildFormScreen();
+      submittedForms = buildSubmissionsListWidget();
     });
   }
 
-   Future<void> _handleRefresh() async {
+  // handle scroll up to refresh submissions
+ Future<void> handleScrollUpToRefresh() async {
     List<Request> forms = await Requests.getForms(prefs);
     if (forms == null || forms.isEmpty) {
       submittedForms = Scaffold(
         body: Center(
           child: FlatButton(
             child: Text('There is nothing to display right now. Click to refresh'),
-            onPressed: _handleRefresh,
+            onPressed: handleScrollUpToRefresh,
           ),
         )
       );
@@ -421,26 +428,29 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
       submittedForms = new RefreshIndicator(
         child: ListView.builder(
         padding: const EdgeInsets.all(16.0),
-        itemBuilder: (context, index) => _buildFormItem(forms[index], index),
+        itemBuilder: (context, index) => buildSubmissionItem(forms[index], index),
         itemCount: forms.length,
           ),
-          onRefresh: _handleRefresh,
+          onRefresh: handleScrollUpToRefresh,
       );
     }
 
     return null;
   }
 
-  void _loadTokensAndRepName() async {
+  // called on initialisation, prefills rep name from username and gets tokens
+  void loadTokensAndRepNameFromPreferences() async {
     _repName = (this.prefs.getString('username') ?? '');
     refreshToken = (this.prefs.getString('refresh') ?? '');
     accessToken = (this.prefs.getString('access' ?? ''));
+
+    // need to set state to re render text in box
     setState(() {
       _repNameController.text =_repName;
     });
   }
 
-  void _logout() async {
+  void logoutUser() async {
     // delete tokens if they are valid
     if (TokenProcessor.validateToken(accessToken) && ! (await Requests.deleteToken(accessToken))) {
       // if we go here, the access token is valid but the call to delete it failed (probably a backend error)
@@ -457,97 +467,23 @@ class _FormScreen extends State<FormScreen> with WidgetsBindingObserver {
     await this.prefs.remove('refresh');
     await this.prefs.remove('is_admin');
 
-    // pop form screen
+    // pop form screen, back to login screen
     Navigator.of(context).pop();
   }
 
-  void _showDialog(int id) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // return object of type Dialog
-        return AlertDialog(
-          title: new Text("Success"),
-          content: new Text("The form has been sent successfully! id: $id"),
-          actions: <Widget>[
-            new FlatButton(
-              child: new Text("Close"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-    void showValidateDialog(int id) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // return object of type Dialog
-        return AlertDialog(
-          title: new Text("Do you want to validate this request?"),
-          actions: <Widget>[
-            new FlatButton(
-              child: new Text("Validate"),
-              onPressed: () { 
-                Navigator.of(context).pop();
-                handleApproveRequest(id);
-              },
-            ),
-            new FlatButton(
-              child: new Text("Cancel"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
+  // only for admins, gets the id of a submitted form and handles its approval
   void handleApproveRequest (int id) async {
     bool status = await Requests.approveRequest(id, prefs);
-    SnackBarController.showSnackBarErrorMessage(_formsListKey, status ? "Successfully approved request #$id" : "An error occurred.");
+    SnackBarController.showSnackBarMessage(_formsListKey, status ? "Successfully approved request #$id" : "An error occurred.");
     setFormScreen();
   }
 
-   void _showLogOutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // return object of type Dialog
-        return AlertDialog(
-          title: new Text("Do you want to log out ?"),
-          actions: <Widget>[
-            new FlatButton(
-              child: new Text("Confirm"),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _logout();
-              },
-            ),
-            new FlatButton(
-              child: new Text("Close"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-    void _biometricAuth () async {
+  void _biometricAuth () async {
     var localAuth = LocalAuthentication();
     bool didAuthenticate = await localAuth.authenticateWithBiometrics(
         localizedReason: 'Please authenticate to Login', useErrorDialogs: false);
     if (!didAuthenticate) {
-      _logout();
+      logoutUser();
     }
   }
 
